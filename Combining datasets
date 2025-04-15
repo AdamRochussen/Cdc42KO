@@ -1,0 +1,27 @@
+import pandas as pd
+from scipy.stats import combine_pvalues
+
+# Load datasets
+transcriptomics_df = pd.read_excel("Transcriptomics simplified list.xlsx", sheet_name="Sheet1")
+proteomics_df = pd.read_excel("Proteomics simplified list.xlsx", sheet_name="Sheet1")
+
+# Merge on common gene names
+merged_df = pd.merge(transcriptomics_df, proteomics_df, on="Gene name", suffixes=("_transcriptomics", "_proteomics"))
+
+# Filter for genes with p < 0.01 in either dataset
+significant_df = merged_df[
+    (merged_df["p-value_transcriptomics"] < 0.01) |
+    (merged_df["p-value_proteomics"] < 0.01)
+].copy()
+
+# Compute combined p-value using Fisher's method
+significant_df["combined_p-value"] = significant_df.apply(
+    lambda row: combine_pvalues(
+        [row["p-value_transcriptomics"], row["p-value_proteomics"]],
+        method='fisher'
+    )[1],
+    axis=1
+)
+
+# Save results to CSV
+significant_df.to_csv("cross_validated_genes.csv", index=False)
